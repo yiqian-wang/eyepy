@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import functools
 import logging
-import warnings
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
@@ -9,8 +8,6 @@ import imageio
 import numpy as np
 from skimage import img_as_ubyte
 
-from eyepy.core import config
-from eyepy.core.base import Annotation, Bscan, EnfaceImage, LayerAnnotation, Meta
 from eyepy.io.heyex.specification.xml_export import HEXML_BSCAN_VERSIONS, HEXML_VERSIONS
 
 logger = logging.getLogger(__name__)
@@ -83,15 +80,12 @@ class HeyexXmlReader:
         return bscans
 
     @property
-    def localizer_name(self):
-        lclzr_pattern = ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL"
-        return self.xml_root[0].find(lclzr_pattern).text.split("\\")[-1]
-
-    @property
     def localizer(self):
+        localizer_pattern = ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL"
+        localizer_name = self.xml_root[0].find(localizer_pattern).text.split("\\")[-1]
         return EnfaceImage(
-            data=lambda: imageio.imread(self.path.parent / self.localizer_name),
-            name=self.localizer_name,
+            data=lambda: imageio.imread(self.path.parent / localizer_name),
+            name=localizer_name,
         )
 
     @property
@@ -153,10 +147,11 @@ class HeyexXmlReader:
                     ]
                 return LayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeZ)
             else:
-                #warnings.warn(f"{bscan_obj} contains no segmentation", UserWarning)
-                data = np.zeros((max(config.SEG_MAPPING.values()) + 1, bscan_obj.oct_obj.SizeX))
+                # warnings.warn(f"{bscan_obj} contains no segmentation", UserWarning)
+                data = np.zeros(
+                    (max(config.SEG_MAPPING.values()) + 1, bscan_obj.oct_obj.SizeX)
+                )
                 return LayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeZ)
-
 
         return {
             "layers": layers_dict,

@@ -1,0 +1,57 @@
+[tool.poetry]
+name = "eyepy"
+version = "0.1.0"
+description = "The Python package for working with ophthalmological data."
+authors = ["Olivier Morelle <oli4morelle@gmail.com>"]
+license = "MIT"
+readme = "README.rst"
+repository = "https://github.com/Oli4/eyepy"
+#homepage
+#documentation
+keywords = ["ophthalmology", "oct", "visualization", "spectralis"]
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Healthcare Industry",
+    "Development Status :: 4 - Beta",
+    "Natural Language :: English",
+    "Operating System :: OS Independent"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.11"
+imageio = "^2.14.1"
+numpy = "^1.22.1"
+seaborn = "^0.11.2"
+scikit-image = "^0.19.1"
+scipy = "^1.7.3"
+imagecodecs = "^2021.11.20"
+matplotlib = "^3.5.1"
+
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+pre-commit = "^2.16.0"
+commitizen = "^2.20.4"
+jupyter = "^1.0.0"
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+tag_format = "$version"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+#[semantic_release]
+#upload_to_pypi = true
+#version_variable = setup.py:__version__,eyepy/__init__.py:__version__,docs/conf.py:__version__
+#major_on_zero = false

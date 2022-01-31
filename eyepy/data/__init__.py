@@ -4,14 +4,14 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from eyepy.core.base import Oct
+import eyepy as ep
 
 logger = logging.getLogger(__name__)
 
 SAMPLE_DATA = {
     "drusen_patient": (
         "https://uni-bonn.sciebo.de/s/VD8CPAgDKp2EYlm/download",
-        Oct.from_heyex_xml,
+        ep.import_heyex_xml,
     )
 }
 
