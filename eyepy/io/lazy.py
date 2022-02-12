@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-import warnings
+import os
+from eyepy.core.eyemeta import EyeMeta
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union
-
-import imageio
+from typing import Callable, Dict, List, Optional, Union, MutableMapping
 import numpy as np
 
 # PR1 and EZ map to 14 and PR2 and IZ map to 15. Hence both names can be used
@@ -30,6 +29,133 @@ SEG_MAPPING = {
     "PR2": 15,
     "RPE": 16,
 }
+
+
+class LazyMeta(EyeMeta):
+    def __init__(self, *args, **kwargs):
+        """The Meta object is a dict with additional functionalities.
+
+        The additional functionallities are:
+        1. A string representation suitable for printing the meta information.
+
+        2. Checking if a keys value is a callable before returning it. In case
+        it is a callable, it sets the value to the return value of the callable.
+        This is used for lazy loading OCT data. The meta information for the OCT
+        and all B-Scans is only read from the file when accessed.
+
+        An instance of the meta object can be created as you would create an
+        ordinary dictionary.
+
+        For example:
+
+            + Meta({"SizeX": 512})
+            + Meta(SizeX=512)
+            + Meta([(SizeX, 512), (SizeY, 512)])
+        """
+        self._store = dict()
+        self.update(dict(*args, **kwargs))  # use the free update to set keys
+
+    def __getitem__(self, key):
+        value = self._store[key]
+        if callable(value):
+            self[key] = value()
+        return self._store[key]
+
+
+class LazyAnnotation(MutableMapping):
+    def __init__(self, *args, **kwargs):
+        self._store = dict()
+        self.update(dict(*args, **kwargs))  # use the free update to set keys
+        self._bscan = None
+
+    def __getitem__(self, key):
+        value = self._store[key]
+        if callable(value):
+            self[key] = value(self.bscan)
+        return self._store[key]
+
+    def __setitem__(self, key, value):
+        self._store[key] = value
+
+    def __delitem__(self, key):
+        del self._store[key]
+
+    def __iter__(self):
+        return iter(self._store)
+
+    def __len__(self):
+        return len(self._store)
+
+    # TODO: Make the annotation printable to get an overview
+    # def __str__(self):
+    #     return f"{os.linesep}".join(
+    #         [f"{f}: {self[f]}" for f in self if f != "__empty"])
+
+    # def __repr__(self):
+    #     return self.__str__()
+
+    @property
+    def bscan(self):
+        if self._bscan is None:
+            raise AttributeError("bscan is not set for this Annotation.")
+        return self._bscan
+
+    @bscan.setter
+    def bscan(self, value: "Bscan"):
+        self._bscan = value
+
+
+class LazyLayerAnnotation(MutableMapping):
+    def __init__(self, data, layername_mapping=None, max_height=2000):
+        self._data = data
+        self.max_height = max_height
+        if layername_mapping is None:
+            self.mapping = SEG_MAPPING
+        else:
+            self.mapping = layername_mapping
+
+    @property
+    def data(self):
+        if callable(self._data):
+            self._data = self._data()
+        return self._data
+
+    def __getitem__(self, key):
+        data = self.data[self.mapping[key]]
+        nans = np.isnan(data)
+        empty = np.nonzero(
+            np.logical_or(
+                np.less(data, 0, where=~nans),
+                np.greater(data, self.max_height, where=~nans),
+            )
+        )
+        data = np.copy(data)
+        data[empty] = np.nan
+        if np.nansum(data) > 0:
+            return data
+        else:
+            raise KeyError(f"There is no data given for the {key} layer")
+
+    def __setitem__(self, key, value):
+        self.data[self.mapping[key]] = value
+
+    def __delitem__(self, key):
+        self.data[self.mapping[key], :] = np.nan
+
+    def __iter__(self):
+        inv_map = {v: k for k, v in self.mapping.items()}
+        return iter(inv_map.values())
+
+    def __len__(self):
+        return len(self.data.shape[0])
+
+    def layer_indices(self, key):
+        layer = self[key]
+        nan_indices = np.isnan(layer)
+        col_indices = np.arange(len(layer))[~nan_indices]
+        row_indices = np.rint(layer).astype(int)[~nan_indices]
+
+        return (row_indices, col_indices)
 
 
 class LazyEnfaceImage:
@@ -77,8 +203,8 @@ class LazyBscan:
     def __init__(
         self,
         data: Union[np.ndarray, Callable],
-        annotation: Optional[Annotation] = None,
-        meta: Optional[Union[Dict, Meta]] = None,
+        annotation: Optional[LazyAnnotation] = None,
+        meta: Optional[Union[Dict, LazyMeta]] = None,
         data_processing: Optional[Callable] = None,
         oct_obj: Optional["Oct"] = None,
         name: Optional[str] = None,
@@ -139,7 +265,7 @@ class LazyBscan:
     def annotation(self):
         """A dict holding all Bscan annotation data."""
         if self._annotation is None:
-            self._annotation = Annotation({})
+            self._annotation = LazyAnnotation({})
         elif callable(self._annotation):
             self._annotation = self._annotation()
         self._annotation.bscan = self
@@ -176,7 +302,7 @@ class LazyBscan:
     def layers(self):
         if "layers" not in self.annotation:
             l_shape = np.zeros((max(SEG_MAPPING.values()) + 1, self.oct_obj.SizeX))
-            self.annotation["layers"] = LayerAnnotation(l_shape)
+            self.annotation["layers"] = LazyLayerAnnotation(l_shape)
         if callable(self.annotation["layers"]):
             self.annotation["layers"] = self.annotation["layers"]()
         return self.annotation["layers"]
@@ -241,9 +367,7 @@ class LazyVolume:
         self,
         bscans: List[Union[Callable, LazyBscan]],
         localizer: Optional[Union[Callable, LazyEnfaceImage]] = None,
-        meta: Optional[Meta] = None,
-        drusenfinder: DrusenFinder = DefaultDrusenFinder(),
-        eyequantifier: EyeQuantifier = DefaultEyeQuantifier(),
+        meta: Optional[LazyMeta] = None,
         data_path: Optional[str] = None,
     ):
         """
@@ -257,20 +381,14 @@ class LazyVolume:
         self.bscans = bscans
         self._localizer = localizer
         self._meta = meta
-        self._drusenfinder = drusenfinder
-        self._eyequantifier = eyequantifier
         self._tform_localizer_to_oct = None
-
-        self._drusen = None
-        self._drusen_raw = None
 
         self._eyepy_id = None
         if data_path is None:
             self.data_path = Path.home() / ".eyepy"
         self.data_path = Path(data_path)
-        self.drusen_path = self.data_path / ".eyepy" / f"{self.eyepy_id}_drusen_map.npy"
 
-    def __getitem__(self, index) -> LazyBscan:
+    def __getitem__(self, index) -> Union[LazyBscan, List[LazyBscan]]:
         """The B-Scan at the given index."""
         if type(index) == slice:
             return [self[i] for i in range(*index.indices(len(self)))]
@@ -285,40 +403,9 @@ class LazyVolume:
         """The number of B-Scans."""
         return len(self.bscans)
 
-    def estimate_bscan_distance(self):
-        # Try to estimate B-Scan distances. Can be used if Bscan Positions
-        # but not their distance is in the meta information
-
-        # Pythagoras in case B-Scans are rotated with respect to the localizer
-        a = self[-1].StartY - self[0].StartY
-        b = self[-1].StartX - self[0].StartX
-        self.meta["Distance"] = np.sqrt(a ** 2 + b ** 2) / (len(self.bscans) - 1)
-        return self.Distance
-
     @property
     def shape(self):
-        return (self.SizeZ, self.SizeX, self.NumBScans)
-
-    @property
-    def SizeX(self):
-        try:
-            return self.meta["SizeX"]
-        except:
-            return self[0].scan.shape[1]
-
-    @property
-    def SizeZ(self):
-        try:
-            return self.meta["SizeZ"]
-        except:
-            return self[0].scan.shape[0]
-
-    @property
-    def NumBScans(self):
-        try:
-            return self.meta["NumBScans"]
-        except:
-            return len(self)
+        return (self.meta["NumBScans"], self.meta["SizeX"], self.meta["SizeY"])
 
     @property
     def localizer(self):
@@ -337,7 +424,7 @@ class LazyVolume:
         the unprocessed output of the OCT device. In any case this is
         the unprocessed data imported by eyepy.
         """
-        return np.stack([x.scan_raw for x in self.bscans], axis=-1)
+        return np.stack([x.scan_raw for x in self.bscans], axis=0)
 
     @property
     def volume(self):
@@ -346,7 +433,7 @@ class LazyVolume:
         The array is of dtype <ubyte> and encodes the intensities as
         values between 0 and 255.
         """
-        return np.stack([x.scan for x in self.bscans], axis=-1)
+        return np.stack([x.scan for x in self.bscans], axis=0)
 
     @property
     def layers_raw(self):
@@ -368,7 +455,7 @@ class LazyVolume:
         empty = np.nonzero(
             np.logical_or(
                 np.less(self.layers_raw, 0, where=~nans),
-                np.greater(self.layers_raw, self.SizeZ, where=~nans),
+                np.greater(self.layers_raw, self.meta["SizeY"], where=~nans),
             )
         )
 

@@ -5,10 +5,22 @@ __author__ = """Olivier Morelle"""
 __email__ = "oli4morelle@gmail.com"
 __version__ = "0.3.5"
 
+from eyepy.core import (
+    EyeEnface,
+    EyeLayer,
+    EyeVolume,
+    EyeBscan,
+    EyeData,
+    EyeMeta,
+    EyeVolumePixelAnnotation,
+)
+
 from eyepy.io import (
     import_heyex_xml,
     import_heyex_vol,
     import_bscan_folder,
-    import_enface_image,
+    import_duke_mat,
+    import_retouche,
 )
-from eyepy.core import *
+
+from eyepy.quantification import drusen

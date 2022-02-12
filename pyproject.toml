@@ -29,11 +29,12 @@ classifiers = [
 python = ">=3.8,<3.11"
 imageio = "^2.14.1"
 numpy = "^1.22.1"
-seaborn = "^0.11.2"
 scikit-image = "^0.19.1"
 scipy = "^1.7.3"
 imagecodecs = "^2021.11.20"
 matplotlib = "^3.5.1"
+#seaborn = "^0.11.2"
+itk = "^5.2.1"
 
 
 [tool.poetry.dev-dependencies]

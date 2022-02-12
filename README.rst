@@ -34,45 +34,31 @@ Getting started
 
 Installation
 ^^^^^^^^^^^^
-Install eyepy with :code:`pip install -U eyepie`. Yes it is :code:`eyepie` and not :code:`eyepy` for
+To install the latest version of eyepy run :code:`pip install -U eyepie`. It is :code:`eyepie` and not :code:`eyepy` for
 installation with pip.
 
-Loading Data
+Import Data
 ^^^^^^^^^^^^
 
 .. code-block:: python
 
    import eyepy as ep
 
-   # Load B-Scans from folder
-   data = ep.Oct.from_folder("path/to/folder")
-
-   # Load an OCT volume from the DUKE dataset
-   data = ep.Oct.from_duke_mat("path/to/file.mat")
-
    # Load an HEYEX XML export
-   data = ep.Oct.from_heyex_xml("path/to/folder")
+   ev = ep.import_heyex_xml("path/to/folder")
 
    # Load an HEYEX VOL export
-   data = ep.Oct.from_heyex_vol("path/to/file.vol")
+   ev = ep.import_heyex_vol("path/to/file.vol")
 
-The Oct object
+The EyeVolume object
 ^^^^^^^^^^^^^^
 
-When loading data as described above an Oct object is returned. You can use
+When loading data as described above an EyeVolume object is returned. You can use
 this object to perform common actions on the OCT volume such as:
 
-+ Iterating over the volume to retrieve Bscan objects :code:`for bscan in data`
-+ Plotting a localizer (NIR) image associated to the OCT :code:`data.plot(localizer=True)`
-+ Accessing an associated localizer image :code:`data.localizer`
-+ Reading Meta information from the loaded data if available :code:`data.ScaleXSlo`
++ Iterating over the volume to retrieve EyeBscan objects :code:`for bscan in ev:`
++ Plotting a localizer (NIR) image associated to the OCT :code:`ev.plot(localizer=True)`
++ Accessing an associated localizer image :code:`ev.localizer`
++ Reading Meta information from the loaded data if available :code:`ev.meta["scale_x"]`
 
-
-
-Credits
--------
-
-This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
-
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
+All B-scans of the volume are assembled into a 3D numpy array which is accessible via the :code:`data` attribute like :code:`ev.data`. The shape of this numpy array is (Number of B-scans, B-scan height, B-scan width).
