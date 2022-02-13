@@ -24,26 +24,28 @@ def filter_by_depth(drusen_map, minimum_depth=2):
     return filtered_drusen.astype(bool)
 
 
-def filter_by_height(drusen_map, minimum_height=2):
+def filter_by_height_enface(drusen_map, minimum_height=2):
     if minimum_height == 0:
         return drusen_map
-    connected_component_array, num_drusen = ndimage.label(drusen_map)
-    component_height_array = component_max_height(connected_component_array)
 
-    filtered_drusen = np.copy(drusen_map)
-    filtered_drusen[component_height_array < minimum_height] = False
-    return filtered_drusen.astype(bool)
+    projection = np.sum(drusen_map, axis=1, keepdims=True)  # Shape (n_bscans, width)
 
-
-def component_max_height(connected_component_array):
+    # Find connected components in the enface projection
+    connected_component_array, num_drusen = ndimage.label(projection != 0)
+    # print(connected_component_array.shape)
     max_heights = np.zeros_like(connected_component_array)
-    # Iterate over all connected drusen components
     for drusen_pos in ndimage.find_objects(connected_component_array):
         # Work on subvolume for faster processing
         component_sub_vol = connected_component_array[drusen_pos]
         # Find current label (most frequent label in the subvolume)
         label = np.bincount(component_sub_vol[component_sub_vol != 0]).argmax()
-        component_max_height = np.max(np.sum(component_sub_vol == label, axis=1))
+        component_max_height = np.max(
+            projection[drusen_pos][component_sub_vol == label]
+        )
         # Set drusen region to drusen max height
         max_heights[drusen_pos][component_sub_vol == label] = component_max_height
-    return max_heights
+
+    filtered_drusen = np.copy(drusen_map)
+    indices = np.nonzero(max_heights < minimum_height)
+    filtered_drusen[indices[0], :, indices[2]] = False
+    return filtered_drusen.astype(bool)

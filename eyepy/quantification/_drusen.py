@@ -4,7 +4,7 @@ import logging
 import numpy as np
 from eyepy.core.eyevolume import EyeLayer
 
-from eyepy.quantification.utils.filter import filter_by_height
+from eyepy.quantification.utils.filter import filter_by_height_enface
 
 logger = logging.getLogger("eyepy.quantification.drusen")
 
@@ -66,6 +66,6 @@ def drusen(rpe_height, bm_height, volume_shape, minimum_height=2):
             if not rpe[sli, col] == -9223372036854775808:
                 drusen_map[sli, rpe[sli, col] : irpe[sli, col], col] = 1
 
-    drusen_map = filter_by_height(drusen_map, minimum_height)
+    drusen_map = filter_by_height_enface(drusen_map, minimum_height)
 
     return drusen_map
