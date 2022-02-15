@@ -294,7 +294,10 @@ class EyeVolume:
         if type(index) == slice:
             return [self[i] for i in range(*index.indices(len(self)))]
         else:
-            return EyeBscan(self, index)
+            if index <= len(self):
+                return EyeBscan(self, index)
+            else:
+                raise IndexError()
 
     def __len__(self):
         """The number of B-Scans."""
