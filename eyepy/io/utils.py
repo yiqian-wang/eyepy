@@ -164,8 +164,9 @@ def _get_volume_meta(lazy_volume: LazyVolume):
         if set(start_distances) == set(end_distances):
             bscan_distance = start_distances[0]
         else:
-            msg = "B-scans are not equally spaced. Data can not be imported."
-            raise ValueError(msg)
+            bscan_distance = start_distances[0]
+            # msg = "B-scans are not equally spaced. Data can not be imported."
+            # raise ValueError(msg)
     else:
         bscan_distance = 0
 

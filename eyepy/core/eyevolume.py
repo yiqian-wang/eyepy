@@ -1,8 +1,8 @@
 import numpy as np
-import numpy.typing as npt
+# import numpy.typing as npt
+import nptyping as npt
 from matplotlib import cm, colors, patches
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from numpy import typing as npt
 from skimage import transform
 
 from eyepy.core.eyeenface import EyeEnface
@@ -11,6 +11,7 @@ from eyepy.core.eyemeta import EyeEnfaceMeta, EyeBscanMeta, EyeVolumeMeta
 
 from eyepy import config
 from collections import defaultdict
+import typing
 from typing import Union, List, Optional, Dict, TypedDict, Tuple, Callable
 from skimage.transform._geometric import GeometricTransform
 
@@ -28,6 +29,7 @@ class EyeVolumeLayerAnnotation:
         self,
         volume: "EyeVolume",
         data: Optional[npt.NDArray[np.float32]] = None,
+        # data: Optional[np.ndarray[typing.Any, np.dtype[np.float32]]] = None,
         knots: Optional[Dict[int, List[LayerKnot]]] = None,
     ):
         """
